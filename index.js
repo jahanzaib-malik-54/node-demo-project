@@ -1,73 +1,74 @@
 import "dotenv/config";
 import express from "express";
-import mongoose from "mongoose";
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// DB Connection
-mongoose
-  .connect(process.env.MONGODB_URI, {
+app.use(express.json()); // Middleware to parse JSON
 
-  })
-  .then(() => console.log("✅ Connected to MongoDB"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-app.use(express.json());
-
-// Product Schema
-const productSchema = new mongoose.Schema({
-  name: String,
-  price: Number,
+app.get('/', (req, res) => {
+  res.send('Hello from Express on Vercel!');
 });
 
-const Product = mongoose.model("Product", productSchema);
 
-// Routes
-app.get("/", (req, res) => {
-  res.send("Hello from Express on Vercel + MongoDB!");
-});
+
+
+const products = [
+  { id: 1, name: "Laptop", price: 1200 },
+  { id: 2, name: "Phone", price: 800 },
+  { id: 3, name: "pencil", price: 1 },
+  { id: 4, name: "noteBook", price: 10 },
+];
 
 // GET all products
-app.get("/api/products", async (req, res) => {
-  const products = await Product.find();
+app.get("/api/products", (req, res) => {
   res.json(products);
 });
 
-// GET product by ID
-app.get("/api/products/:id", async (req, res) => {
-  const product = await Product.findById(req.params.id);
+//  GET product by ID
+app.get("/api/products/:id", (req, res) => {
+  const product = products.find((p) => p.id === parseInt(req.params.id));
   if (!product) return res.status(404).json({ message: "Product not found" });
   res.json(product);
 });
 
-// CREATE a product
-app.post("/api/products", async (req, res) => {
+//  CREATE a new product
+app.post("/api/products", (req, res) => {
   const { name, price } = req.body;
-  const newProduct = new Product({ name, price });
-  await newProduct.save();
+  const newProduct = {
+    id: products.length + 1,
+    name,
+    price,
+  };
+  products.push(newProduct);
   res.status(201).json(newProduct);
 });
 
-// UPDATE a product
-app.put("/api/products/:id", async (req, res) => {
-  const updated = await Product.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    { new: true }
+//  UPDATE a product
+app.put("/api/products/:id", (req, res) => {
+  const product = products.find((p) => p.id === parseInt(req.params.id));
+  if (!product) return res.status(404).json({ message: "Product not found" });
+
+  const { name, price } = req.body;
+  product.name = name ?? product.name;
+  product.price = price ?? product.price;
+
+  res.json(product);
+});
+
+//  DELETE a product
+app.delete("/api/products/:id", (req, res) => {
+  const productIndex = products.findIndex(
+    (p) => p.id === parseInt(req.params.id)
   );
-  if (!updated) return res.status(404).json({ message: "Product not found" });
-  res.json(updated);
+  if (productIndex === -1)
+    return res.status(404).json({ message: "Product not found" });
+
+  const deleted = products.splice(productIndex, 1);
+  res.json(deleted[0]);
 });
 
-// DELETE a product
-app.delete("/api/products/:id", async (req, res) => {
-  const deleted = await Product.findByIdAndDelete(req.params.id);
-  if (!deleted) return res.status(404).json({ message: "Product not found" });
-  res.json(deleted);
-});
-
-// Start Server
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
 });
